@@ -22,6 +22,12 @@ return [
             'port' => Env::get('REDIS_PORT', 6379),
             'database' => Env::get('REDIS_DATABASE', 0),
         ],
+        'user' => [
+            'class' => 'yii\web\User',
+            'identityClass' => 'app\models\User',
+            'enableAutoLogin' => false,
+            'enableSession' => false,
+        ],
     ],
     'params' => [
         'yooMoney' => [

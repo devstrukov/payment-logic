@@ -7,10 +7,10 @@ $container = \Yii::$container;
 $container->set('app\repositories\PaymentRepositoryInterface', 'app\repositories\PaymentRepository');
 $container->set('app\repositories\AttemptRepositoryInterface', 'app\repositories\AttemptRepository');
 
-// Провайдеры (по умолчанию YooMoney)
+// Провайдеры
 $container->set('app\providers\PaymentProviderInterface', 'app\providers\YooMoneyPaymentProvider');
 
-// Очереди (по умолчанию Redis)
+// Очереди
 $container->set('app\queue\QueueInterface', function() {
     return new \app\queue\RedisQueue(\Yii::$app->redis);
 });
@@ -18,6 +18,7 @@ $container->set('app\queue\QueueInterface', function() {
 // Сервисы
 $container->set('app\services\UserServiceInterface', 'app\services\UserService');
 $container->set('app\services\PaymentServiceInterface', 'app\services\PaymentService');
+$container->set('app\services\AuthServiceInterface', 'app\services\AuthService');
 $container->set('app\services\QueueService', 'app\services\QueueService');
 $container->set('app\services\IntegrationService', 'app\services\IntegrationService');
 
