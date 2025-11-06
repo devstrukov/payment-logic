@@ -3,9 +3,13 @@ namespace app\services;
 
 use app\models\Payment;
 use app\models\Attempt;
+use app\events\PaymentCreatedEvent;
+use app\events\PaymentSucceededEvent;
+use app\events\PaymentFailedEvent;
 use app\repositories\PaymentRepositoryInterface;
 use app\repositories\AttemptRepositoryInterface;
 use app\providers\PaymentProviderInterface;
+use Yii;
 
 class PaymentService implements PaymentServiceInterface
 {
@@ -20,7 +24,7 @@ class PaymentService implements PaymentServiceInterface
         AttemptRepositoryInterface $attemptRepo,
         PaymentProviderInterface $paymentProvider,
         UserServiceInterface $userService,
-        \app\services\QueueService $queueService
+        QueueService $queueService
     ) {
         $this->paymentRepo = $paymentRepo;
         $this->attemptRepo = $attemptRepo;
@@ -61,6 +65,9 @@ class PaymentService implements PaymentServiceInterface
             'integration_id' => $integrationId,
             'status' => Attempt::STATUS_PENDING
         ]);
+
+        // Генерируем событие создания платежа
+        $this->triggerPaymentCreated($payment);
 
         // Добавляем в очередь вместо синхронной обработки
         $this->queueService->pushPaymentJob($payment->id);
@@ -111,7 +118,6 @@ class PaymentService implements PaymentServiceInterface
         ];
     }
 
-    // Новый метод для обработки платежа из очереди
     public function processPayment(int $paymentId): void
     {
         $payment = $this->paymentRepo->findById($paymentId);
@@ -131,14 +137,38 @@ class PaymentService implements PaymentServiceInterface
             $lastAttempt->markAsSucceed($result['external_id']);
             $payment->markAsSucceed();
 
-            \Yii::info("Payment {$paymentId} processed successfully");
+            // Генерируем событие успешного платежа
+            $this->triggerPaymentSucceeded($payment);
+
+            Yii::info("Payment {$paymentId} processed successfully");
 
         } catch (\Exception $e) {
             // Обновляем попытку и платеж
             $lastAttempt->markAsFailed($e->getMessage());
             $payment->markAsFailed();
 
-            \Yii::error("Payment {$paymentId} failed: " . $e->getMessage());
+            // Генерируем событие неудачного платежа
+            $this->triggerPaymentFailed($payment);
+
+            Yii::error("Payment {$paymentId} failed: " . $e->getMessage());
         }
+    }
+
+    private function triggerPaymentCreated(Payment $payment): void
+    {
+        $event = new PaymentCreatedEvent($payment);
+        Yii::$app->trigger('payment.created', $event);
+    }
+
+    private function triggerPaymentSucceeded(Payment $payment): void
+    {
+        $event = new PaymentSucceededEvent($payment);
+        Yii::$app->trigger('payment.succeeded', $event);
+    }
+
+    private function triggerPaymentFailed(Payment $payment): void
+    {
+        $event = new PaymentFailedEvent($payment);
+        Yii::$app->trigger('payment.failed', $event);
     }
 }

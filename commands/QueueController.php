@@ -28,9 +28,41 @@ class QueueController extends Controller
         echo "Payment queue processing finished.\n";
     }
 
-    public function actionTestQueue()
+    public function actionProcessNotifications()
     {
-        $result = $this->queueService->pushPaymentJob(999);
-        echo "Test job pushed: " . ($result ? 'success' : 'failed') . "\n";
+        echo "Starting notification queue processing...\n";
+
+        try {
+            $this->queueService->processNotificationQueue();
+        } catch (\Exception $e) {
+            echo "Notification queue processing error: " . $e->getMessage() . "\n";
+            \Yii::error("Notification queue processing error: " . $e->getMessage());
+        }
+
+        echo "Notification queue processing finished.\n";
+    }
+
+    public function actionProcessAll()
+    {
+        echo "Starting all queue processing...\n";
+
+        // Обрабатываем платежи
+        $this->queueService->processPaymentQueue();
+
+        // Обрабатываем уведомления
+        $this->queueService->processNotificationQueue();
+
+        echo "All queue processing finished.\n";
+    }
+
+    public function actionTestNotification()
+    {
+        $result = $this->queueService->pushNotificationJob(
+            'all',
+            'Test notification message',
+            'test@example.com'
+        );
+
+        echo "Test notification job pushed: " . ($result ? 'success' : 'failed') . "\n";
     }
 }
