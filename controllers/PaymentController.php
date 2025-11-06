@@ -3,6 +3,7 @@ namespace app\controllers;
 
 use yii\web\Controller;
 use yii\filters\VerbFilter;
+use yii\filters\auth\HttpBearerAuth;
 use app\services\PaymentServiceInterface;
 use app\services\UserServiceInterface;
 
@@ -25,16 +26,22 @@ class PaymentController extends Controller
 
     public function behaviors()
     {
-        return [
-            'verbs' => [
-                'class' => VerbFilter::class,
-                'actions' => [
-                    'balance' => ['get'],
-                    'create' => ['post'],
-                    'status' => ['get'],
-                ],
+        $behaviors = parent::behaviors();
+
+        $behaviors['authenticator'] = [
+            'class' => HttpBearerAuth::class,
+        ];
+
+        $behaviors['verbs'] = [
+            'class' => VerbFilter::class,
+            'actions' => [
+                'balance' => ['get'],
+                'create' => ['post'],
+                'status' => ['get'],
             ],
         ];
+
+        return $behaviors;
     }
 
     public function actionBalance()

@@ -34,6 +34,11 @@ $config = [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
+                // Auth routes
+                'POST auth/login' => 'auth/login',
+                'GET auth/me' => 'auth/me',
+
+                // Payment routes
                 'GET payments/balance' => 'payment/balance',
                 'POST payments/create' => 'payment/create',
                 'GET payments/<id:\d+>/status' => 'payment/status',

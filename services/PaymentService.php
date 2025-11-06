@@ -76,7 +76,39 @@ class PaymentService implements PaymentServiceInterface
 
     public function getPaymentStatus(int $paymentId): array
     {
-        // ... код без изменений (оставляем как было)
+        $payment = $this->paymentRepo->findById($paymentId);
+
+        if (!$payment) {
+            throw new \RuntimeException('Payment not found');
+        }
+
+        // Проверяем что платеж принадлежит текущему пользователю
+        $currentUserId = $this->userService->getCurrentUserId();
+        if ($payment->user_id !== $currentUserId) {
+            throw new \RuntimeException('Payment not found');
+        }
+
+        $attemptsData = [];
+        foreach ($payment->attempts as $attempt) {
+            $attemptsData[] = [
+                'id' => $attempt->id,
+                'status' => $attempt->status,
+                'integration_id' => $attempt->integration_id,
+                'external_id' => $attempt->external_id,
+                'error_message' => $attempt->error_message,
+                'created_at' => $attempt->created_at
+            ];
+        }
+
+        return [
+            'id' => $payment->id,
+            'status' => $payment->status,
+            'amount' => $payment->amount,
+            'user_id' => $payment->user_id,
+            'attempts' => $attemptsData,
+            'created_at' => $payment->created_at,
+            'updated_at' => $payment->updated_at
+        ];
     }
 
     // Новый метод для обработки платежа из очереди
