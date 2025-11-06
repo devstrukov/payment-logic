@@ -1,6 +1,7 @@
 <?php
 
 $common = require __DIR__ . '/common.php';
+$container = require __DIR__ . '/containers.php';
 
 $config = [
     'id' => 'payment-app',
@@ -11,7 +12,8 @@ $config = [
             'cookieValidationKey' => 'your-cookie-validation-key',
             'parsers' => [
                 'application/json' => 'yii\web\JsonParser',
-            ]
+            ],
+            'enableCsrfValidation' => false, // ← ОТКЛЮЧАЕМ CSRF ДЛЯ API
         ],
         'response' => [
             'format' => yii\web\Response::FORMAT_JSON,
@@ -42,6 +44,7 @@ $config = [
 
 $config['components'] = array_merge($config['components'], $common['components']);
 $config['params'] = $common['params'];
+$config['container'] = $container;
 
 if (YII_ENV_DEV) {
     $config['bootstrap'][] = 'debug';

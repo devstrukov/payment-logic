@@ -17,9 +17,9 @@ use yii\db\ActiveRecord;
  */
 class Attempt extends ActiveRecord
 {
-    const STATUS_PENDING = 'pending';    // Попытка создана, но еще не обработана
-    const STATUS_SUCCEED = 'succeed';    // Попытка успешна
-    const STATUS_FAILED = 'failed';      // Попытка неуспешна
+    const STATUS_PENDING = 'pending';
+    const STATUS_SUCCEED = 'succeed';
+    const STATUS_FAILED = 'failed';
 
     public static function tableName()
     {
@@ -33,7 +33,7 @@ class Attempt extends ActiveRecord
             [['payment_id', 'integration_id'], 'integer'],
             [['status'], 'string'],
             [['status'], 'in', 'range' => [self::STATUS_PENDING, self::STATUS_SUCCEED, self::STATUS_FAILED]],
-            [['external_id', 'error_message'], 'string'],
+            [['external_id', 'error_message'], 'string', 'max' => 255],
             [['payment_id'], 'exist', 'skipOnError' => true, 'targetClass' => Payment::class, 'targetAttribute' => ['payment_id' => 'id']],
             [['integration_id'], 'exist', 'skipOnError' => true, 'targetClass' => Integration::class, 'targetAttribute' => ['integration_id' => 'id']],
         ];
@@ -57,14 +57,36 @@ class Attempt extends ActiveRecord
     public function markAsSucceed(string $externalId = null): bool
     {
         $this->status = self::STATUS_SUCCEED;
-        $this->external_id = $externalId;
+        if ($externalId) {
+            $this->external_id = $externalId;
+        }
         return $this->save();
     }
 
     public function markAsFailed(string $errorMessage = null): bool
     {
         $this->status = self::STATUS_FAILED;
-        $this->error_message = $errorMessage;
+        if ($errorMessage) {
+            $this->error_message = $errorMessage;
+        }
         return $this->save();
+    }
+
+    public function beforeValidate()
+    {
+        if (!parent::beforeValidate()) {
+            return false;
+        }
+
+        // Проверяем что интеграция существует и активна
+        if ($this->integration_id) {
+            $integration = Integration::findOne($this->integration_id);
+            if (!$integration || !$integration->is_active) {
+                $this->addError('integration_id', 'Integration is not active or does not exist');
+                return false;
+            }
+        }
+
+        return true;
     }
 }
