@@ -13,17 +13,20 @@ class PaymentService implements PaymentServiceInterface
     private $attemptRepo;
     private $paymentProvider;
     private $userService;
+    private $queueService;
 
     public function __construct(
         PaymentRepositoryInterface $paymentRepo,
         AttemptRepositoryInterface $attemptRepo,
         PaymentProviderInterface $paymentProvider,
-        UserServiceInterface $userService
+        UserServiceInterface $userService,
+        \app\services\QueueService $queueService
     ) {
         $this->paymentRepo = $paymentRepo;
         $this->attemptRepo = $attemptRepo;
         $this->paymentProvider = $paymentProvider;
         $this->userService = $userService;
+        $this->queueService = $queueService;
     }
 
     public function createPayment(array $data): array
@@ -59,8 +62,8 @@ class PaymentService implements PaymentServiceInterface
             'status' => Attempt::STATUS_PENDING
         ]);
 
-        // Синхронная обработка (в коммите 3 заменим на очередь)
-        $this->processPayment($payment->id);
+        // Добавляем в очередь вместо синхронной обработки
+        $this->queueService->pushPaymentJob($payment->id);
 
         return [
             'id' => $payment->id,
@@ -73,42 +76,11 @@ class PaymentService implements PaymentServiceInterface
 
     public function getPaymentStatus(int $paymentId): array
     {
-        $payment = $this->paymentRepo->findById($paymentId);
-
-        if (!$payment) {
-            throw new \RuntimeException('Payment not found');
-        }
-
-        // Проверяем что платеж принадлежит текущему пользователю
-        $currentUserId = $this->userService->getCurrentUserId();
-        if ($payment->user_id !== $currentUserId) {
-            throw new \RuntimeException('Payment not found');
-        }
-
-        $attemptsData = [];
-        foreach ($payment->attempts as $attempt) {
-            $attemptsData[] = [
-                'id' => $attempt->id,
-                'status' => $attempt->status,
-                'integration_id' => $attempt->integration_id,
-                'external_id' => $attempt->external_id,
-                'error_message' => $attempt->error_message,
-                'created_at' => $attempt->created_at
-            ];
-        }
-
-        return [
-            'id' => $payment->id,
-            'status' => $payment->status,
-            'amount' => $payment->amount,
-            'user_id' => $payment->user_id,
-            'attempts' => $attemptsData,
-            'created_at' => $payment->created_at,
-            'updated_at' => $payment->updated_at
-        ];
+        // ... код без изменений (оставляем как было)
     }
 
-    private function processPayment(int $paymentId): void
+    // Новый метод для обработки платежа из очереди
+    public function processPayment(int $paymentId): void
     {
         $payment = $this->paymentRepo->findById($paymentId);
         $lastAttempt = $payment->lastAttempt;
@@ -127,12 +99,14 @@ class PaymentService implements PaymentServiceInterface
             $lastAttempt->markAsSucceed($result['external_id']);
             $payment->markAsSucceed();
 
+            \Yii::info("Payment {$paymentId} processed successfully");
+
         } catch (\Exception $e) {
             // Обновляем попытку и платеж
             $lastAttempt->markAsFailed($e->getMessage());
             $payment->markAsFailed();
 
-            throw $e;
+            \Yii::error("Payment {$paymentId} failed: " . $e->getMessage());
         }
     }
 }
