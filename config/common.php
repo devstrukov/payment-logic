@@ -4,6 +4,9 @@ use app\components\Env;
 
 Env::load(__DIR__ . '/../.env');
 
+// Загружаем DI контейнер
+$container = require __DIR__ . '/containers.php';
+
 return [
     'components' => [
         'db' => [
@@ -29,4 +32,5 @@ return [
             'keyPath' => Env::get('WEBMONEY_KEY_PATH'),
         ],
     ],
+    'container' => $container, // Добавляем контейнер в конфиг
 ];
