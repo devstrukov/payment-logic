@@ -1,13 +1,22 @@
 <?php
 
 use app\components\Env;
+use app\listeners\PaymentNotificationListener;
+use app\services\NotificationManager;
+use app\services\EmailNotificationService;
+use app\services\SmsNotificationService;
 
 Env::load(__DIR__ . '/../.env');
 
 // Загружаем DI контейнер
 $container = require __DIR__ . '/containers.php';
 
+// Загружаем конфигурацию событий
+$events = require __DIR__ . '/events.php';
+
 return [
+    'basePath' => dirname(__DIR__),
+    'bootstrap' => ['log', 'bootstrap'],
     'components' => [
         'db' => [
             'class' => 'yii\db\Connection',
@@ -37,6 +46,12 @@ return [
             'certPath' => Env::get('WEBMONEY_CERT_PATH'),
             'keyPath' => Env::get('WEBMONEY_KEY_PATH'),
         ],
+        'notifications' => [
+            'email_from' => Env::get('EMAIL_FROM', 'noreply@example.com'),
+            'sms_api_key' => Env::get('SMS_API_KEY', ''),
+            'sms_sender' => Env::get('SMS_SENDER', 'Payments'),
+        ],
     ],
-    'container' => $container, // Добавляем контейнер в конфиг
+    'container' => $container,
+    'events' => $events, // Добавляем события в конфиг
 ];
